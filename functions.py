@@ -89,7 +89,15 @@ def compute_save_reduced_root_sift(reducer,paths):
 				np.save(root_sift_path,reduced_root_sift)	
 				print("reduced_root_sift saved")
 				print("---------------------------")
-					
+
+def file_counter(paths,extension,folder="",remove=False):
+	counter=0
+	for directory in paths:
+		files=os.listdir("./"+folder+directory)
+		for file in files :
+			if file.endswith(extension):
+				counter=counter+1
+	return counter
 	
 	
 	
