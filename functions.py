@@ -2,7 +2,11 @@ import numpy as np
 import cv2
 import os 
 import sklearn
-
+import math
+from scipy.stats import multivariate_normal
+from sklearn.mixture import gaussian_mixture  as gauss
+from sklearn.mixture.gmm import log_multivariate_normal_density
+from sklearn.utils.extmath import logsumexp
 '''Functions for Make and Model Recognition'''
 #################
 #ROOT SIFT CLASS#
@@ -89,42 +93,103 @@ def compute_save_reduced_root_sift(reducer,paths):
 				reduced_root_sift = np.dot(reducer.T,root_sift.T).T
 				root_sift_path="./reduced_data/"+image_path.split(".")[0]+"_root_sift"
 				np.save(root_sift_path,reduced_root_sift)	
-				# print("reduced_root_sift saved")
-				# print("---------------------------")
 
 def file_counter(paths,extension,folder="",remove=False,loader=False):
 	counter=0
+	load=[]
 	for directory in paths:
-		files=os.listdir("./"+folder+directory)
+		files=os.listdir("./"+folder+"/"+directory)
 		for file in files :
 			if file.endswith(extension):
 				counter=counter+1
 				if(loader):
-					matrice=np.load("./"+folder+directory)
-					print(matrice.shape)
+					matrice=np.load("./"+folder+"/"+directory+"/"+file)
+					load.append(matrice)
+				if(remove):
+					os.remove("./"+folder+"/"+directory+"/"+file)
+					print("removing file")
+	if(loader):
+		return load
 	return counter
-	
-def create_fisher_vector():
-	return 1
 
 	
+##############################
+#FISHER VECTOR IMPLEMENTATION#
+##############################
+#Author: Jacob Gildenblat, 2014 modified by Guichard Laurent
+#License: you may use this for whatever you like 
+def likelihood_moment(x, ytk, moment):    
+
+    x_moment = np.power(np.float32(x), moment) if moment > 0 else np.ones(x.shape[0]).reshape(x.shape[0], 1)
+    return x_moment * ytk.reshape(ytk.shape[0], 1)
+	
+def likelihood_statistics(samples, means, covs, weights):
+	ss0 = []
+	ss1 = []
+	ss2 = []
+	"""log_multivariate_normal_density is a deprecated function that is only in sklearn 0.18 and will be removed afterwards"""
+	lpr = (log_multivariate_normal_density(samples, means, covs,"full") + np.log(weights))
+	logprob = logsumexp(lpr, axis=1)
+	probabilities = (np.exp(lpr - logprob[:, np.newaxis])).T
+	
+	for k in range(0, len(weights)):
+
+		lm = likelihood_moment(samples, probabilities[k], 0)
+		ss0.append(np.sum(lm, axis=0))
+		lm = likelihood_moment(samples, probabilities[k], 1)
+		ss1.append(np.sum(lm, axis=0))
+		lm = likelihood_moment(samples, probabilities[k], 2)
+		ss2.append(np.sum(lm, axis=0))
+		
+	ss0 = np.asarray(ss0)
+	ss1 = np.asarray(ss1)
+	ss2 = np.asarray(ss2)
+
+	return np.reshape(ss0, (ss0.shape[0], 1)), ss1, ss2	
+
+def fisher_vector_weights(s0, s1, s2, means, covs, w, T):       
+    return (s0 - T * w) / np.sqrt(w)       
+
+def fisher_vector_means(s0, s1, s2, means, sigma, w, T):    
+    return (s1 - means * s0) / (np.sqrt(np.multiply(sigma, w)))
+
+def fisher_vector_sigma(s0, s1, s2, means, sigma, w, T):
+    return (s2 - 2 * means * s1 + (means * means - sigma) * s0) / (np.sqrt(2*w)*sigma)  
+	
+def normalize(fisher_vector):
+    v = np.sqrt(abs(fisher_vector)) * np.sign(fisher_vector)
+    return v / np.sqrt(np.dot(v, v))
+
+def normalize(fisher_vector):
+	v = np.sqrt(abs(fisher_vector)) * np.sign(fisher_vector)
+	return (v / np.sqrt(np.dot(v, v)))	
+	
+def fisher_vector(samples, means, covs, w):    
+	s0, s1, s2 =  likelihood_statistics(samples, means, covs, w)    
+	T = samples.shape[0]
+	covs = np.float32([np.diagonal(covs[k]) for k in range(0, covs.shape[0])])
+	s0 = np.reshape(s0, (s0.shape[0], 1))    
+	w = np.reshape(w, (w.shape[0], 1))
+	
+	a = fisher_vector_weights(s0, s1, s2, means, covs, w, T)
+	b = fisher_vector_means(s0, s1, s2, means, covs, w, T)        
+	c = fisher_vector_sigma(s0, s1, s2, means, covs, w, T)  
+
+	fv = np.concatenate([np.concatenate(a), np.concatenate(b), np.concatenate(c)])
+	fv = normalize(fv)    
+	return fv    
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+def generate_fisher_vectors(paths,means,covs,w,comp):
+	global gg
+	for directory in paths:
+		files=os.listdir("./reduced_data/"+directory)
+		for file in files:
+			file_name=file.split("_")[0]+comp
+			sample=np.load("./reduced_data/"+directory+"/"+file)
+			gg=None
+			fv=fisher_vector(sample,means,covs,w)
+			np.save("./fisher_vectors/"+directory+"/fisher_vector_"+file_name,fv)
 	
 	
 	
