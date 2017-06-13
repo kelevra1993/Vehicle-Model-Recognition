@@ -89,7 +89,7 @@ def compute_save_reduced_root_sift(reducer,paths):
 				root_sift_path="./reduced_data/"+image_path.split(".")[0]+"_root_sift"
 				np.save(root_sift_path,reduced_root_sift)	
 
-def file_counter(paths,extension,folder="",remove=False,loader=False):
+def file_counter(paths,extension,folder="",remove=False,loader=False,Fisher=False):
 	counter=0
 	load=[]
 	for directory in paths:
@@ -99,9 +99,12 @@ def file_counter(paths,extension,folder="",remove=False,loader=False):
 				counter=counter+1
 				if(loader):
 					matrice=np.load("./"+folder+"/"+directory+"/"+file)
-					row=(matrice.shape)[0]
-					for r in range(row) :
-						load.append(matrice[r])
+					if(Fisher):
+						load.append(matrice)
+					else:	
+						row=(matrice.shape)[0]
+						for r in range(row) :
+							load.append(matrice[r])
 				if(remove):
 					os.remove("./"+folder+"/"+directory+"/"+file)
 					print("removing file")

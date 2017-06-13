@@ -21,7 +21,7 @@ paths=["aston","bmw","clio","dodge","peugot"]
 
 #Name of the file that stores the reducer matrix that can be used for the PCA reduction process
 id="reducer"
-
+'''
 """this is going to be removed it used to track what was going on"""
 num_images=fun.file_counter(paths,".png")
 
@@ -42,7 +42,7 @@ print("\n")
 
 #Creation and storage of Reduced ROOT SIFT VECTORS
 
-'''will be removed '''
+"""will be removed """
 #first we check to see if reduced files are already in the the reduced data file
 #we do that by counting the number of files in the system
 num_npy=fun.file_counter(paths,".npy","reduced_data")
@@ -65,21 +65,13 @@ if(num_npy!=num_images or compute_all_steps):
 # second_descriptors=np.atleast_2d(fun.file_counter(paths,".npy","reduced_data",remove=False,loader=True))
 
 """Implementation that has to kbe kept """
-start=time.time()
 descriptors=np.atleast_2d(np.asarray(fun.file_counter(paths,".npy","reduced_data",remove=False,loader=True)))
-end=time.time()
-print(end-start ," seconds")
 print("the shape of the descriptors using the second function is ", descriptors.shape)
 
 #Check to see if there are any trained GMM models
 #If so load them and use them to create a fisher vector 
-
-"""
-gmm_means_file="./GMM/means.gmm.npy"
-gmm_covariance_file="./GMM/covs.gmm.npy"
-gmm_weight_file="./GMM/weights.gmm.npy"
-# gmm_comp=1000
-for gmm_comp in range(1000,4000,100):
+#We will be using a range 
+for gmm_comp in range(1000,4000,200):
 	gmm_means_file="./GMM/means"+str(gmm_comp)+".gmm.npy"
 	gmm_covariance_file="./GMM/covs"+str(gmm_comp)+".gmm.npy"
 	gmm_weight_file="./GMM/weights"+str(gmm_comp)+".gmm.npy"
@@ -121,7 +113,7 @@ for gmm_comp in range(1000,4000,100):
 
 	# now we check to see if there is any fisher vector
 	num_fis=fun.file_counter(paths,".npy","fisher_vectors",remove=False)
-	if(num_fis!=num_images or problem):
+	if(compute_all_steps):
 		# print("No fisher vector files were found")
 		# print("generating them...")
 		print("Generate and Save fisher files for GMM %d..."%(gmm_comp))
@@ -136,8 +128,9 @@ for gmm_comp in range(1000,4000,100):
 		print("we found our fisher files")
 		print("loading our fisher files...")
 		# fisher_vectors=np.atleast_2d(fun.file_counter(paths,".npy","fisher_vectors",remove=False,loader=True))
-		# print(fisher_vectors.shape)
-	"""
+		# print(fisher_vectors.shape)'''
+		
+	
 """
 	norm=np.linalg.norm(fisher_vectors[1])
 	cosine_metric=cosine_similarity(fisher_vectors)
@@ -222,27 +215,55 @@ print("Shape of the weights matrix of the GMM is : ",weights.shape)
 fisher_vector=fun.fisher_vectorNew(sample,means,covs,weights)
 print("the shape of the NORMALIZED fisher vector is : ",fisher_vector.shape)"""
 
-"""
+
 ######################################
 # FINAL STAGE OF PROOF OF CONCEPT    #
 ######################################
-for gmm_comp in range(1000,4000,100):
+for gmm_comp in range(1000,4000,200):
 
 	print("loading our fisher files...")
-	fisher_vectors=np.atleast_2d(fun.file_counter(paths,str(gmm_comp)+".npy","fisher_vectors",remove=False,loader=True))
-	print(fisher_vectors.shape)
+	print("-------------------------------------------------")
+	fisher_vectors=np.atleast_2d(fun.file_counter(paths,str(gmm_comp)+".npy","fisher_vectors",remove=False,loader=True,Fisher=True))
+	# print(fisher_vectors.shape)
 	
 	cosine_metric=cosine_similarity(fisher_vectors)
-	print(cosine_metric.shape)
+	# print(cosine_metric.shape)
 	# for i in range(10):
 		# print(cosine_metric[i,i])
 		# print(cosine_metric[i])
-	print("\n")
-	for ind in range(25,30):
+	all_bmw=0		
+	all_clio=0			
+	all_dodge=0			
+	all_peugot=0				
+	all_aston=0		
+		
+	for ind in range(5,10):
 		indices=np.flip(np.argsort(cosine_metric[ind]),axis=0)
-		print(indices)
+		# print(indices)
+		aston=0
+		bmw=0
+		dodge=0
+		clio=0
+		peugot=0
+		for  sim in range(1,20):
+		
+			if(indices[sim]<20):
+				aston=aston+1
+			if(indices[sim]>19 and indices[sim]<40):
+				bmw=bmw+1
+			if(indices[sim]>39 and indices[sim]<60):
+				clio=clio+1
+			if(indices[sim]>59 and indices[sim]<80):
+				dodge=dodge+1
+			if(indices[sim]>79):
+				peugot=peugot+1
+		print("there are %d ASTON vehicles in the first 20 images"%aston)		
+		print("there are %d BMW vehicles in the first 20 images"%bmw)		
+		print("there are %d CLIO vehicles in the first 20 images"%clio)		
+		print("there are %d DODGE vehicles in the first 20 images"%dodge)		
+		print("there are %d PEUGOT vehicles in the first 20 images"%peugot)		
 		print("\n")
-		for sim in range(5):
+		"""for sim in range(5):
 		
 			if(indices[sim]<20):
 				# print("./buildings/%03d.png"%(indices[sim]+1))
@@ -299,12 +320,27 @@ for gmm_comp in range(1000,4000,100):
 				if(sim==0):
 					cv2.imshow("original",image)
 				else:
-					cv2.imshow("similar %d"%(sim),image)
+					cv2.imshow("similar %d"%(sim),image)"""
 					
-					
-		cv2.waitKey(0)
+		all_bmw+=bmw			
+		all_clio+=clio			
+		all_dodge+=dodge			
+		all_peugot+=peugot			
+		all_aston+=aston	
+		# cv2.waitKey(0)
+	print("Overall GMM with %d components gives us : "%gmm_comp)
+	print("BMW: %d"%all_bmw)
+	print("CLIO: %d"%all_clio)
+	print("DODGE: %d"%all_dodge)
+	print("PEUGOT: %d"%all_peugot)
+	print("ASTON: %d"%all_aston)
+	cv2.waitKey(0)
+	
+	
+	
+	print("-------------------------------------------------")
 	# break
-"""
+
 
 
 
