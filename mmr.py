@@ -4,54 +4,77 @@ from sklearn.metrics.pairwise import cosine_similarity
 import cv2
 import os
 import functions as fun
+import time
 
 
-'''This script is the main script of the make and model recognition using unsupervised learning'''
-pc_comp=100
-problem=True
+'''This script is the main script of the make and model recognition using unsupervised learning
+All of the functions used are in functions.py file
+'''
+#Number of SIFT components that we will be keeping after PCA reduction, original number of components is 128
+pc_comp=120
+
+#Booleans that track of the fisher vector pipeline
+compute_all_steps=True
 
 #First we define the PCA REDUCTOR VECTOR
-# paths=["buildings","sports"]
-# model_paths=["aston","bmw","clio","dodge","peugot"]
 paths=["aston","bmw","clio","dodge","peugot"]
+
+#Name of the file that stores the reducer matrix that can be used for the PCA reduction process
 id="reducer"
+
+"""this is going to be removed it used to track what was going on"""
 num_images=fun.file_counter(paths,".png")
-#If no reducer file, create one 
-"""
-if(not(os.path.isfile(id+".npy")) or problem):
+
+#Check to see if there is a reducer file, if not create one 
+if(not(os.path.isfile(id+".npy")) or compute_all_steps):
 	print("No reducer file was found")
 	print("A new reducer file is being generated...")
 	fun.compute_save_reduce_vector(paths,id,pc_comp=pc_comp)
 	print("The Reducer file has been generated")
 	print("\n")
-	problem=True
-#Load it
+
+#Once the reducer file has been created it is time to load it and use it for PCA Reduction 
 print("Loading reducer file...")
 reducer=np.load(id+".npy")
 print("Reducer file loaded")
 print("\n")
 
 
-#Second we create and store the reduced rootsift vectors
+#Creation and storage of Reduced ROOT SIFT VECTORS
+
+'''will be removed '''
 #first we check to see if reduced files are already in the the reduced data file
 #we do that by counting the number of files in the system
 num_npy=fun.file_counter(paths,".npy","reduced_data")
-if(num_npy!=num_images or problem):
-	print("no root sift files were found")
-	print("generating root sift files...")
+
+if(num_npy!=num_images or compute_all_steps):
+	print("No root sift files were found")
+	print("Generating root sift files...")
 	fun.compute_save_reduced_root_sift(reducer,paths)
-	print("root sift files generated")
-print("\n")
-#Now we get all of the sift descriptors of all of our images and we make it fit our model.
-#we transpose it to make it readable to for the gmm fitting function
-# descriptors=fun.compute_save_reduce_vector(paths,id,pc_comp=100,reduced=True).T
-# print("the shape of the descriptors is : ",descriptors.shape)
-# print("\n")
+	print("Reduced root sift files generated and saved")
+	print("\n")
+	
+#Load all of the saved ROOT SIFT DESCRIPTORS and then use them to fit a GMM model
 
-#Once we have got all of the descriptors the first thing we want to do is to check that there is a trained GMM
-#if there is a trained GMM we load it and if not we train a GMM using our descriptors
+"""this is a previous implementation case that we do not consider anymore """
+# start=time.time()
+# descriptors=fun.compute_save_reduce_vector(paths,id,pc_comp=pc_comp,reduced=True).T
+# end=time.time()
+# print(end-start ," seconds")
+# print("the shape of the descriptors is ",descriptors.shape)
+# second_descriptors=np.atleast_2d(fun.file_counter(paths,".npy","reduced_data",remove=False,loader=True))
+
+"""Implementation that has to kbe kept """
+start=time.time()
+descriptors=np.atleast_2d(np.asarray(fun.file_counter(paths,".npy","reduced_data",remove=False,loader=True)))
+end=time.time()
+print(end-start ," seconds")
+print("the shape of the descriptors using the second function is ", descriptors.shape)
+
+#Check to see if there are any trained GMM models
+#If so load them and use them to create a fisher vector 
+
 """
-
 gmm_means_file="./GMM/means.gmm.npy"
 gmm_covariance_file="./GMM/covs.gmm.npy"
 gmm_weight_file="./GMM/weights.gmm.npy"
@@ -114,17 +137,19 @@ for gmm_comp in range(1000,4000,100):
 		print("loading our fisher files...")
 		# fisher_vectors=np.atleast_2d(fun.file_counter(paths,".npy","fisher_vectors",remove=False,loader=True))
 		# print(fisher_vectors.shape)
-	
 	"""
+"""
 	norm=np.linalg.norm(fisher_vectors[1])
 	cosine_metric=cosine_similarity(fisher_vectors)
 	print(cosine_metric.shape)
 	# for i in range(10):
 		# print(cosine_metric[i,i])
 		# print(cosine_metric[i])
-	print("\n")"""
+	print("\n")
+	"""
 
-	"""for ind in range(45,55):
+"""
+	for ind in range(45,55):
 		indices=np.flip(np.argsort(cosine_metric[ind]),axis=0)
 		print(indices)
 		print("\n")
@@ -149,6 +174,7 @@ for gmm_comp in range(1000,4000,100):
 		cv2.waitKey(0)"""
 			
 
+"""
 	del means
 	del covs
 	del weights
@@ -157,6 +183,7 @@ for gmm_comp in range(1000,4000,100):
 	covs=None
 	weights=None
 	fisher_vectors=None
+	"""
 
 
 	
@@ -172,7 +199,8 @@ for n_components in range(2, 10):
 	bic = GMM.bic(descriptors)
 	if bicmin > bic:
 		print ("BIC of %d is" %(n_components),bic)
-		bicmin = bic"""
+		bicmin = bic
+		"""
 """
 GMM=gauss.GaussianMixture(n_components=3,covariance_type="full",max_iter=1000,n_init=1,init_params="kmeans")
 GMM.fit(descriptors)		
@@ -194,9 +222,89 @@ print("Shape of the weights matrix of the GMM is : ",weights.shape)
 fisher_vector=fun.fisher_vectorNew(sample,means,covs,weights)
 print("the shape of the NORMALIZED fisher vector is : ",fisher_vector.shape)"""
 
+"""
+######################################
+# FINAL STAGE OF PROOF OF CONCEPT    #
+######################################
+for gmm_comp in range(1000,4000,100):
 
-
-
+	print("loading our fisher files...")
+	fisher_vectors=np.atleast_2d(fun.file_counter(paths,str(gmm_comp)+".npy","fisher_vectors",remove=False,loader=True))
+	print(fisher_vectors.shape)
+	
+	cosine_metric=cosine_similarity(fisher_vectors)
+	print(cosine_metric.shape)
+	# for i in range(10):
+		# print(cosine_metric[i,i])
+		# print(cosine_metric[i])
+	print("\n")
+	for ind in range(25,30):
+		indices=np.flip(np.argsort(cosine_metric[ind]),axis=0)
+		print(indices)
+		print("\n")
+		for sim in range(5):
+		
+			if(indices[sim]<20):
+				# print("./buildings/%03d.png"%(indices[sim]+1))
+				if (indices[sim]==0):
+					image=cv2.imread("./aston/%03d.png"%(indices[sim]+1))
+				else:
+					image=cv2.imread("./aston/%03d.png"%(indices[sim]))
+				height, width = image.shape[:2]
+				image = cv2.resize(image,(2*width, 2*height), interpolation = cv2.INTER_CUBIC)
+				if(sim==0):
+					cv2.imshow("original",image)
+				else:
+					cv2.imshow("similar %d"%(sim),image)
+					
+					
+			if(indices[sim]>19 and indices[sim]<40):
+				# print("./buildings/%03d.png"%(indices[sim]+1))
+				image=cv2.imread("./bmw/%03d.png"%(indices[sim]+1-20))
+				height, width = image.shape[:2]
+				image = cv2.resize(image,(2*width, 2*height), interpolation = cv2.INTER_CUBIC)
+				if(sim==0):
+					cv2.imshow("original",image)
+				else:
+					cv2.imshow("similar %d"%(sim),image)
+					
+					
+			if(indices[sim]>39 and indices[sim]<60):
+				# print("./buildings/%03d.png"%(indices[sim]+1))
+				image=cv2.imread("./clio/%03d.png"%(indices[sim]+1-40))
+				height, width = image.shape[:2]
+				image = cv2.resize(image,(2*width, 2*height), interpolation = cv2.INTER_CUBIC)
+				if(sim==0):
+					cv2.imshow("original",image)
+				else:
+					cv2.imshow("similar %d"%(sim),image)
+					
+					
+					
+			if(indices[sim]>59 and indices[sim]<80):
+				# print("./buildings/%03d.png"%(indices[sim]+1))
+				image=cv2.imread("./dodge/%03d.png"%(indices[sim]+1-60))
+				height, width = image.shape[:2]
+				image = cv2.resize(image,(2*width, 2*height), interpolation = cv2.INTER_CUBIC)
+				if(sim==0):
+					cv2.imshow("original",image)
+				else:
+					cv2.imshow("similar %d"%(sim),image)
+					
+					
+			if(indices[sim]>79):
+				image=cv2.imread("./peugot/%03d.png"%(indices[sim]+1-80))
+				height, width = image.shape[:2]
+				image = cv2.resize(image,(2*width, 2*height), interpolation = cv2.INTER_CUBIC)
+				if(sim==0):
+					cv2.imshow("original",image)
+				else:
+					cv2.imshow("similar %d"%(sim),image)
+					
+					
+		cv2.waitKey(0)
+	# break
+"""
 
 
 

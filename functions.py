@@ -34,7 +34,6 @@ def _compute_and_reduce_components_(data,num_comp_keep=0,reduced=False):
 	[values,vectors]=np.linalg.eig(np.cov(centered_data))
 	#Total number of components
 	num_comp=np.size(vectors,axis=1)
-	# print(num_comp)
 	#Sorting eigenvalues in ascending order and eigenvectors accordingly
 	sorted=np.argsort(values)
 	sorted=sorted[::-1]
@@ -47,10 +46,6 @@ def _compute_and_reduce_components_(data,num_comp_keep=0,reduced=False):
 	if(reduced):
 		reduced_data = np.dot(vectors.T,centered_data)
 		return reduced_data
-	#Data projection in initial space
-	# reduced_data=np.dot(vectors,reduced_data).T+np.mean(data,axis=0)
-	# print("\n")
-	# print(centered_data.shape)
 	return(vectors)		
 
 def compute_save_reduce_vector(paths,id,pc_comp,reduced=False):
@@ -76,7 +71,7 @@ def compute_save_reduce_vector(paths,id,pc_comp,reduced=False):
 
 ####################################
 #COMPUTE AND SAVE REDUCED ROOTSIFTS#
-####################################
+####################################  
 
 def compute_save_reduced_root_sift(reducer,paths):
 	for directory in paths:
@@ -104,7 +99,9 @@ def file_counter(paths,extension,folder="",remove=False,loader=False):
 				counter=counter+1
 				if(loader):
 					matrice=np.load("./"+folder+"/"+directory+"/"+file)
-					load.append(matrice)
+					row=(matrice.shape)[0]
+					for r in range(row) :
+						load.append(matrice[r])
 				if(remove):
 					os.remove("./"+folder+"/"+directory+"/"+file)
 					print("removing file")
