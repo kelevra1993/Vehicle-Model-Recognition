@@ -52,11 +52,12 @@ def compute_save_reduce_vector(paths,id,pc_comp,reduced=False):
 	rs=RootSIFT()
 	sift=[]
 	for directory in paths:
+		print("opening %s to use for creation of Reducer..."%(directory))
 		files=os.listdir("./"+directory)	
 		for file in files : 
 			if file.endswith(".png"):
 				#extract RootSIFT descriptors
-				gray=cv2.imread(directory+"/"+file)
+				gray=cv2.imread(directory+"/"+file,0)
 				detector=cv2.xfeatures2d.SIFT_create()
 				(kps, desc)=detector.detectAndCompute(gray,None)
 				root_desc=rs.compute(gray,desc)
@@ -80,7 +81,7 @@ def compute_save_reduced_root_sift(reducer,paths):
 			if file.endswith(".png"):
 				rs=RootSIFT()
 				image_path=directory+"/"+file
-				image=cv2.imread(image_path)
+				image=cv2.imread(image_path,0)
 				detector=cv2.xfeatures2d.SIFT_create()
 				(kps, desc)=detector.detectAndCompute(image,None)
 				root_desc=rs.compute(image,desc)
@@ -128,7 +129,7 @@ def likelihood_statistics(samples, means, covs, weights):
 	ss1 = []
 	ss2 = []
 	"""log_multivariate_normal_density is a deprecated function that is only in sklearn 0.18 and will be removed afterwards"""
-	lpr = (log_multivariate_normal_density(samples, means, covs,"full") + np.log(weights))
+	lpr = (log_multivariate_normal_density(samples, means, covs,"diag") + np.log(weights))
 	logprob = logsumexp(lpr, axis=1)
 	probabilities = (np.exp(lpr - logprob[:, np.newaxis])).T
 	
@@ -167,7 +168,10 @@ def normalize(fisher_vector):
 def fisher_vector(samples, means, covs, w):    
 	s0, s1, s2 =  likelihood_statistics(samples, means, covs, w)    
 	T = samples.shape[0]
-	covs = np.float32([np.diagonal(covs[k]) for k in range(0, covs.shape[0])])
+	#CASE WHERE WE HAVE A FULL COVARIANCE FOR GMM 
+	# covs = np.float32([np.diagonal(covs[k]) for k in range(0, covs.shape[0])])
+	# CASE WHERE WE HAVE A DIAGONAL COVARIANCE FOR FISHER VECTOR
+	#we do nothing
 	s0 = np.reshape(s0, (s0.shape[0], 1))    
 	w = np.reshape(w, (w.shape[0], 1))
 	
