@@ -25,7 +25,7 @@ class RootSIFT:
 ######################################
 #Definition of PCA reduction function#
 ######################################
-
+#Function that gives the reducer matrice
 def _compute_and_reduce_components_(data,num_comp_keep=0,reduced=False):
 	#We assume that data was fed with the rows as observations
 	#Columns as features that we will want to reduce
@@ -42,21 +42,20 @@ def _compute_and_reduce_components_(data,num_comp_keep=0,reduced=False):
 	# Removal of some components, those that we deem "unprincipal"
 	if num_comp_keep < num_comp and num_comp_keep > 0:
 		vectors = vectors[:,range(num_comp_keep)]
-	# Data Projection in new reduced space
-	if(reduced):
-		reduced_data = np.dot(vectors.T,centered_data)
-		return reduced_data
-	return(vectors)		
-
-def compute_save_reduce_vector(paths,id,pc_comp,reduced=False):
+	return(vectors)	
+	
+#function that gets all sift descriptors from all of the images 
+#then creates a reducer matrice used later on for PCA reduction
+def compute_save_reduce_vector(paths,id,pc_comp):
 	rs=RootSIFT()
 	sift=[]
 	for directory in paths:
-		print("opening %s to use for creation of Reducer..."%(directory))
+		print("opening %s to create the PCA reduction vector..."%(directory))
 		files=os.listdir("./"+directory)	
 		for file in files : 
 			if file.endswith(".png"):
 				#extract RootSIFT descriptors
+				#here to gain time we could save the original root sift files in a folder, but not implemented
 				gray=cv2.imread(directory+"/"+file,0)
 				detector=cv2.xfeatures2d.SIFT_create()
 				(kps, desc)=detector.detectAndCompute(gray,None)
@@ -65,20 +64,19 @@ def compute_save_reduce_vector(paths,id,pc_comp,reduced=False):
 				for i in range(rows):
 					sift.append(root_desc[i])
 	sift=np.asarray(sift)
-	if(reduced):
-		return _compute_and_reduce_components_(sift,pc_comp,reduced=True)
 	pca_reductor=_compute_and_reduce_components_(sift,pc_comp)
 	np.save(id,pca_reductor)
 
 ####################################
 #COMPUTE AND SAVE REDUCED ROOTSIFTS#
 ####################################  
-
+#this function uses the reducer file that was saved to do PCA Reduction, then save these ROOT SIFT VECTORS for one particular file
 def compute_save_reduced_root_sift(reducer,paths):
 	for directory in paths:
 		files=os.listdir("./"+directory)
 		for file in files : 
 			if file.endswith(".png"):
+				#we could have saved original rootsift files and then loaded them from here, but not implemented
 				rs=RootSIFT()
 				image_path=directory+"/"+file
 				image=cv2.imread(image_path,0)
@@ -89,7 +87,7 @@ def compute_save_reduced_root_sift(reducer,paths):
 				reduced_root_sift = np.dot(reducer.T,root_sift.T).T
 				root_sift_path="./reduced_data/"+image_path.split(".")[0]+"_root_sift"
 				np.save(root_sift_path,reduced_root_sift)	
-
+#simple function for file management, uses to load files and remove them
 def file_counter(paths,extension,folder="",remove=False,loader=False,Fisher=False):
 	counter=0
 	load=[]
@@ -101,6 +99,7 @@ def file_counter(paths,extension,folder="",remove=False,loader=False,Fisher=Fals
 				if(loader):
 					matrice=np.load("./"+folder+"/"+directory+"/"+file)
 					if(Fisher):
+						#taking care of particular case when we deal with fisher vector
 						load.append(matrice)
 					else:	
 						row=(matrice.shape)[0]
@@ -168,7 +167,8 @@ def normalize(fisher_vector):
 def fisher_vector(samples, means, covs, w):    
 	s0, s1, s2 =  likelihood_statistics(samples, means, covs, w)    
 	T = samples.shape[0]
-	#CASE WHERE WE HAVE A FULL COVARIANCE FOR GMM 
+	#CASE WHERE WE HAVE A FULL COVARIANCE FOR GMM, JUST UNCOMMENT THE FOLLOWING LINE
+	#and change log_multivariate_normal_density cov from "diag" to "full" in the likelihood_statistics function
 	# covs = np.float32([np.diagonal(covs[k]) for k in range(0, covs.shape[0])])
 	# CASE WHERE WE HAVE A DIAGONAL COVARIANCE FOR FISHER VECTOR
 	#we do nothing
