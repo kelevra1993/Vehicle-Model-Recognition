@@ -14,7 +14,8 @@ from sklearn.utils.extmath import logsumexp
 class RootSIFT:
     def __init__(self):
         #Initialize the SIFT feature extractor
-        self.extractor=cv2.xfeatures2d.SIFT_create()
+        # self.extractor=cv2.xfeatures2d.SIFT_create()
+		self.extractor = cv2.DescriptorExtractor_create("SIFT")
         
     def compute(self, image, descs, eps=1e-7):
         #Applying Hellinger kernel by first L1 Normalizing and taking the square root
@@ -57,8 +58,19 @@ def compute_save_reduce_vector(paths,id,pc_comp):
 				#extract RootSIFT descriptors
 				#here to gain time we could save the original root sift files in a folder, but not implemented
 				gray=cv2.imread(directory+"/"+file,0)
-				detector=cv2.xfeatures2d.SIFT_create()
-				(kps, desc)=detector.detectAndCompute(gray,None)
+				
+				'''python3 implementation'''
+				# detector=cv2.xfeatures2d.SIFT_create()
+				# (kps, desc)=detector.detectAndCompute(image,None)
+				'''end of python3 implementation'''
+				
+				'''opencv2.4.13 implementation'''
+				detector = cv2.FeatureDetector_create("SIFT")
+				kps=detector.detect(gray)
+				extractor=cv2.DescriptorExtractor_create("SIFT")
+				(kps, desc)=extractor.compute(gray,kps)
+				'''end of iimplementation'''
+				
 				root_desc=rs.compute(gray,desc)
 				rows=root_desc.shape[0]
 				for i in range(rows):
@@ -80,8 +92,19 @@ def compute_save_reduced_root_sift(reducer,paths):
 				rs=RootSIFT()
 				image_path=directory+"/"+file
 				image=cv2.imread(image_path,0)
-				detector=cv2.xfeatures2d.SIFT_create()
-				(kps, desc)=detector.detectAndCompute(image,None)
+				
+				'''python3 implementation'''
+				# detector=cv2.xfeatures2d.SIFT_create()
+				# (kps, desc)=detector.detectAndCompute(image,None)
+				'''end of python3 implementation'''
+				
+				'''opencv2.4.13 implementation'''
+				detector = cv2.FeatureDetector_create("SIFT")
+				kps=detector.detect(image)
+				extractor=cv2.DescriptorExtractor_create("SIFT")
+				(kps, desc)=extractor.compute(image,kps)
+				'''end of iimplementation'''
+				
 				root_desc=rs.compute(image,desc)
 				root_sift=np.asarray(root_desc)
 				reduced_root_sift = np.dot(reducer.T,root_sift.T).T
@@ -128,6 +151,9 @@ def likelihood_statistics(samples, means, covs, weights):
 	ss1 = []
 	ss2 = []
 	"""log_multivariate_normal_density is a deprecated function that is only in sklearn 0.18 and will be removed afterwards"""
+	"""to get rid of error message go to your sklearn package in python or python27 /Lib/sites-packages/sklearn/mixture/gmm.py
+	and comment that deprecated line, but keep in mind that it will be removed"""
+	
 	lpr = (log_multivariate_normal_density(samples, means, covs,"diag") + np.log(weights))
 	logprob = logsumexp(lpr, axis=1)
 	probabilities = (np.exp(lpr - logprob[:, np.newaxis])).T
